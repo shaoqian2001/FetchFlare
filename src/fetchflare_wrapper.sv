@@ -287,16 +287,17 @@ prefethcing_table_entry_t current_tag;
 assign  current_training_mode = prefetcher_lut[matched_index].training_mode;
 assign  current_tag.tag           = prefetcher_lut[matched_index].tag;
 
-always_comb   begin                                               
+always_comb   begin
     matched_index_valid = 0;
     matched_index = 0;
-    for (int i = 0; i < `PREFETCHER_TABLE_SIZE ; i++ ) begin //Match Detection
-        if(snoop_valid_i && (prefetcher_lut[i].valid) && (prefetcher_lut[i].tag == snoop_addr_i[0][TAG_WIDTH + INDEX_WIDTH - 1 : INDEX_WIDTH])) begin 
-           matched_index = i;                                                                                                                               
-           matched_index_valid = 1'b1;   
-           break;                        
-        end 
-    end 
+    for (int i = 0; i < `PREFETCHER_TABLE_SIZE ; i++ ) begin //Match Detection: tag AND CTA ID must both match
+        if(snoop_valid_i && (prefetcher_lut[i].valid) && (prefetcher_lut[i].tag == snoop_addr_i[0][TAG_WIDTH + INDEX_WIDTH - 1 : INDEX_WIDTH])
+           && (prefetcher_lut[i].cta_id == snoop_cta_id_i[0])) begin
+           matched_index = i;
+           matched_index_valid = 1'b1;
+           break;
+        end
+    end
 end
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -476,7 +477,8 @@ begin : Match
                     hwpf_stride_throttle_set_internal = '1;
                     hwpf_stride_param_set_internal    = '1;
                     hwpf_stride_base_set_internal     = '1;    
-                    snooping_entry.base = hwpf_stride_base_internal[0]; 
+                    snooping_entry.cta_id = snoop_cta_id_i[0];
+                    snooping_entry.base = hwpf_stride_base_internal[0];
                     snooping_entry.throttle = hwpf_stride_throttle_internal[0];
                     snooping_entry.param = hwpf_stride_param_internal[0];
 
@@ -495,28 +497,30 @@ begin : Match
         //NO MATCH
         else if (fill_index_valid) begin //Find an Invalid Entry
             prefetcher_lut_next[fill_index].valid = '1;
-            prefetcher_lut_next[fill_index].tag = snoop_addr_i[0][TAG_WIDTH + INDEX_WIDTH - 1 : INDEX_WIDTH];           
+            prefetcher_lut_next[fill_index].cta_id = snoop_cta_id_i[0];
+            prefetcher_lut_next[fill_index].tag = snoop_addr_i[0][TAG_WIDTH + INDEX_WIDTH - 1 : INDEX_WIDTH];
             prefetcher_lut_next[fill_index].training_mode = INITIAL;
-            prefetcher_lut_next[fill_index].index = snoop_addr_i[0][INDEX_WIDTH - 1:0];           
-            prefetcher_lut_next[fill_index].stride = '0;   
-            prefetcher_lut_next[fill_index].LRU_state = '0; 
-            for (int k = 0; k < `PREFETCHER_TABLE_SIZE ; k++)                                   
-                if (prefetcher_lut[k].LRU_state < prefetcher_lut[fill_index].LRU_state)    
+            prefetcher_lut_next[fill_index].index = snoop_addr_i[0][INDEX_WIDTH - 1:0];
+            prefetcher_lut_next[fill_index].stride = '0;
+            prefetcher_lut_next[fill_index].LRU_state = '0;
+            for (int k = 0; k < `PREFETCHER_TABLE_SIZE ; k++)
+                if (prefetcher_lut[k].LRU_state < prefetcher_lut[fill_index].LRU_state)
                     prefetcher_lut_next[k].LRU_state++;
-        end else begin 				
-            for (int i=0; i < `PREFETCHER_TABLE_SIZE; ++i) begin 
-                if(prefetcher_lut[i].LRU_state == '1)   begin  
-                    prefetcher_lut_next[i].LRU_state = '0; 
+        end else begin
+            for (int i=0; i < `PREFETCHER_TABLE_SIZE; ++i) begin
+                if(prefetcher_lut[i].LRU_state == '1)   begin
+                    prefetcher_lut_next[i].LRU_state = '0;
                     prefetcher_lut_next[i].valid = '1;
+                    prefetcher_lut_next[i].cta_id = snoop_cta_id_i[0];
                     prefetcher_lut_next[i].tag = snoop_addr_i[0][TAG_WIDTH + INDEX_WIDTH - 1 : INDEX_WIDTH];
                     prefetcher_lut_next[i].training_mode = INITIAL;
                     prefetcher_lut_next[i].index = snoop_addr_i[0][INDEX_WIDTH - 1:0];
                     prefetcher_lut_next[i].stride = '0;
-                    for (int k = 0; k < `PREFETCHER_TABLE_SIZE ; k++)                                   
-                        if (prefetcher_lut[k].LRU_state < prefetcher_lut[replace_index].LRU_state)    
-                            prefetcher_lut_next[k].LRU_state++;                                                                            
-                end 
-            end 
+                    for (int k = 0; k < `PREFETCHER_TABLE_SIZE ; k++)
+                        if (prefetcher_lut[k].LRU_state < prefetcher_lut[replace_index].LRU_state)
+                            prefetcher_lut_next[k].LRU_state++;
+                end
+            end
         end 
     end 
 end 
