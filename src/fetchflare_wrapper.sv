@@ -268,6 +268,12 @@ for (genvar i=0; i<`PREFETCHER_TABLE_SIZE ; i++) begin:LUT_Table
             prefetcher_lut[i].index <= '0;
             prefetcher_lut[i].tag   <= '0;
             prefetcher_lut[i].stride   <= '0;
+        end else if (cta_done_valid_i && prefetcher_lut[i].valid
+                     && (prefetcher_lut[i].cta_id == cta_done_id_i)) begin
+            // CTA completion: invalidate all entries belonging to the finished CTA
+            prefetcher_lut[i].valid <= '0;
+            prefetcher_lut[i].training_mode <= INITIAL;
+            prefetcher_lut[i].stride <= '0;
         end else begin
             prefetcher_lut[i].valid <= prefetcher_lut_next[i].valid;
             prefetcher_lut[i].cta_id <= prefetcher_lut_next[i].cta_id;
