@@ -76,8 +76,14 @@ import hpdcache_pkg::*;
     // Snooping
     //  {{{
     input  logic                 [NUM_SNOOP_PORTS-1:0] snoop_valid_i,
-    input  hpdcache_req_addr_t   [NUM_SNOOP_PORTS-1:0] snoop_addr_i,   
-   
+    input  hpdcache_req_addr_t   [NUM_SNOOP_PORTS-1:0] snoop_addr_i,
+    input  cta_id_t              [NUM_SNOOP_PORTS-1:0] snoop_cta_id_i,
+
+    // CTA lifecycle
+    //  {{{
+    input  logic                                       cta_done_valid_i,
+    input  cta_id_t                                    cta_done_id_i,
+    //  }}}
 
     //  Dcache interface
     //  {{{
@@ -95,6 +101,7 @@ import hpdcache_pkg::*;
     //  {{{
     typedef struct packed {
                 logic                  valid;
+                cta_id_t               cta_id;
                 hpdcache_tag_t         tag;
                 prefetching_mode_t     training_mode;
                 hpdcache_req_offset_t  index;
@@ -251,25 +258,27 @@ end
         
 ///////////////////////// This logic is used to reset the table ///////////////////////////////////
 
-for (genvar i=0; i<`PREFETCHER_TABLE_SIZE ; i++) begin:LUT_Table     
+for (genvar i=0; i<`PREFETCHER_TABLE_SIZE ; i++) begin:LUT_Table
     always @(posedge clk_i or negedge rst_ni) begin
         if (~rst_ni) begin
             prefetcher_lut[i].valid <= '0;
-            prefetcher_lut[i].LRU_state <= i;   
+            prefetcher_lut[i].cta_id <= '0;
+            prefetcher_lut[i].LRU_state <= i;
             prefetcher_lut[i].training_mode <= INITIAL;
             prefetcher_lut[i].index <= '0;
-            prefetcher_lut[i].tag   <= '0;     
-            prefetcher_lut[i].stride   <= '0;   
+            prefetcher_lut[i].tag   <= '0;
+            prefetcher_lut[i].stride   <= '0;
         end else begin
             prefetcher_lut[i].valid <= prefetcher_lut_next[i].valid;
-            prefetcher_lut[i].LRU_state <= prefetcher_lut_next[i].LRU_state ;     
+            prefetcher_lut[i].cta_id <= prefetcher_lut_next[i].cta_id;
+            prefetcher_lut[i].LRU_state <= prefetcher_lut_next[i].LRU_state ;
             prefetcher_lut[i].training_mode <= prefetcher_lut_next[i].training_mode;
             prefetcher_lut[i].index <= prefetcher_lut_next[i].index;
-            prefetcher_lut[i].tag   <= prefetcher_lut_next[i].tag;     
-            prefetcher_lut[i].stride   <= prefetcher_lut_next[i].stride;  
+            prefetcher_lut[i].tag   <= prefetcher_lut_next[i].tag;
+            prefetcher_lut[i].stride   <= prefetcher_lut_next[i].stride;
         end
-    end  
-end 
+    end
+end
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
