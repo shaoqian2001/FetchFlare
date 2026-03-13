@@ -27,6 +27,16 @@ under the License.
 package fetchflare_pkg;
 import hpdcache_pkg::*;
 
+    //  CTA (Cooperative Thread Array) awareness configuration
+    //  {{{
+    `ifndef CTA_ID_WIDTH
+        `define CTA_ID_WIDTH 4
+    `endif
+
+    localparam int unsigned CTA_ID_WIDTH = `CTA_ID_WIDTH;
+    typedef logic [CTA_ID_WIDTH-1:0] cta_id_t;
+    //  }}}
+
     //  Base address configuration register of the hardware memory prefetcher
     //  {{{
     typedef struct packed {
@@ -87,8 +97,9 @@ import hpdcache_pkg::*;
                 PREFETCHING = 3'b101
     }prefetching_mode_t;
 
-//It acts as entry point to the queue, connecting the hardware prefetcher with the prefetching engine's register, 
+//It acts as entry point to the queue, connecting the hardware prefetcher with the prefetching engine's register,
     typedef struct packed {
+                cta_id_t                        cta_id;
                 hwpf_stride_base_t              base;
                 hwpf_stride_param_t             param;
                 hwpf_stride_throttle_t          throttle;
