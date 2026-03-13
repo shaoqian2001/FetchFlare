@@ -532,18 +532,22 @@ begin : Match
 end 
 
 //**************************************************************************** FIFO *********************************************************
+    localparam FIFO_DATA_WIDTH = CTA_ID_WIDTH + 160; // cta_id + base(64) + param(64) + throttle(32)
+
 `ifdef FIFO_Method_1 //if fifo is full do not write new data
-  bram_based_fifo #(.Dw (160), .B(`HPDC_PREFETCHER_FIFO)) 
+  bram_based_fifo #(.Dw (FIFO_DATA_WIDTH), .B(`HPDC_PREFETCHER_FIFO))
     fifo_1
-     (  
-        .din ({snooping_entry.base.base_cline, snooping_entry.base.unused, snooping_entry.base.cycle, snooping_entry.base.rearm,
-                    snooping_entry.base.enable, snooping_entry.param.nblocks, snooping_entry.param.nlines, snooping_entry.param.stride,
-                    snooping_entry.throttle.ninflight, snooping_entry.throttle.nwait}),
-        .wr_en (hwpf_fifo_write & ~hwpf_fifo_full), 
+     (
+        .din ({snooping_entry.cta_id,
+               snooping_entry.base.base_cline, snooping_entry.base.unused, snooping_entry.base.cycle, snooping_entry.base.rearm,
+               snooping_entry.base.enable, snooping_entry.param.nblocks, snooping_entry.param.nlines, snooping_entry.param.stride,
+               snooping_entry.throttle.ninflight, snooping_entry.throttle.nwait}),
+        .wr_en (hwpf_fifo_write & ~hwpf_fifo_full),
         .rd_en (|hwpf_fifo_read),
-        .dout  ({hwpf_fifo_out.base.base_cline, hwpf_fifo_out.base.unused, hwpf_fifo_out.base.cycle, hwpf_fifo_out.base.rearm, hwpf_fifo_out.base.enable,
-                    hwpf_fifo_out.param.nblocks, hwpf_fifo_out.param.nlines, hwpf_fifo_out.param.stride, hwpf_fifo_out.throttle.ninflight, 
-                    hwpf_fifo_out.throttle.nwait}),
+        .dout  ({hwpf_fifo_out.cta_id,
+                 hwpf_fifo_out.base.base_cline, hwpf_fifo_out.base.unused, hwpf_fifo_out.base.cycle, hwpf_fifo_out.base.rearm, hwpf_fifo_out.base.enable,
+                 hwpf_fifo_out.param.nblocks, hwpf_fifo_out.param.nlines, hwpf_fifo_out.param.stride, hwpf_fifo_out.throttle.ninflight,
+                 hwpf_fifo_out.throttle.nwait}),
         .full  (hwpf_fifo_full),
         .nearly_full (near_full),
         .empty (hwpf_fifo_empty),
@@ -551,19 +555,21 @@ end
         .clk   (clk_i),
         .rd_ptr     (rdaddr),
         .wr_ptr     (wraddr)
-        );    
+        );
 `else
-    fetchflare_bram_based_fifo #(.Dw (160), .B(`HPDC_PREFETCHER_FIFO)) //If the FIFO is nearly full (when only fifo has one free space), throws away the first data from the FIFO.
+    fetchflare_bram_based_fifo #(.Dw (FIFO_DATA_WIDTH), .B(`HPDC_PREFETCHER_FIFO)) //If the FIFO is nearly full (when only fifo has one free space), throws away the first data from the FIFO.
     fifo_1
-        (  
-        .din ({snooping_entry.base.base_cline, snooping_entry.base.unused, snooping_entry.base.cycle, snooping_entry.base.rearm,
+        (
+        .din ({snooping_entry.cta_id,
+               snooping_entry.base.base_cline, snooping_entry.base.unused, snooping_entry.base.cycle, snooping_entry.base.rearm,
                snooping_entry.base.enable, snooping_entry.param.nblocks, snooping_entry.param.nlines, snooping_entry.param.stride,
                snooping_entry.throttle.ninflight, snooping_entry.throttle.nwait}),
         .wr_en (hwpf_fifo_write),
         .rd_en (|hwpf_fifo_read | (hwpf_fifo_write & hwpf_fifo_full)),
-        .dout  ({hwpf_fifo_out.base.base_cline, hwpf_fifo_out.base.unused, hwpf_fifo_out.base.cycle, hwpf_fifo_out.base.rearm, hwpf_fifo_out.base.enable,
-                    hwpf_fifo_out.param.nblocks, hwpf_fifo_out.param.nlines, hwpf_fifo_out.param.stride, hwpf_fifo_out.throttle.ninflight, 
-                    hwpf_fifo_out.throttle.nwait}),
+        .dout  ({hwpf_fifo_out.cta_id,
+                 hwpf_fifo_out.base.base_cline, hwpf_fifo_out.base.unused, hwpf_fifo_out.base.cycle, hwpf_fifo_out.base.rearm, hwpf_fifo_out.base.enable,
+                 hwpf_fifo_out.param.nblocks, hwpf_fifo_out.param.nlines, hwpf_fifo_out.param.stride, hwpf_fifo_out.throttle.ninflight,
+                 hwpf_fifo_out.throttle.nwait}),
         .full  (hwpf_fifo_full),
         .nearly_full (near_full),
         .empty (hwpf_fifo_empty),
